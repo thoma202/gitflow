@@ -30,24 +30,24 @@
 prefix=/usr/local
 
 # files that need mode 755
-EXEC_FILES=git-flow
+EXEC_FILES=git-flow-202
 
 # files that need mode 644
-SCRIPT_FILES =git-flow-init
-SCRIPT_FILES+=git-flow-feature
-SCRIPT_FILES+=git-flow-hotfix
-SCRIPT_FILES+=git-flow-release
-SCRIPT_FILES+=git-flow-support
-SCRIPT_FILES+=git-flow-version
-SCRIPT_FILES+=gitflow-common
-SCRIPT_FILES+=gitflow-shFlags
+SCRIPT_FILES =git-flow-init-202
+SCRIPT_FILES+=git-flow-feature-202
+SCRIPT_FILES+=git-flow-hotfix-202
+SCRIPT_FILES+=git-flow-release-202
+SCRIPT_FILES+=git-flow-support-202
+SCRIPT_FILES+=git-flow-version-202
+SCRIPT_FILES+=gitflow-common-202
+SCRIPT_FILES+=gitflow-shFlags-202
 
 all:
 	@echo "usage: make install"
 	@echo "       make uninstall"
 
 install:
-	@test -f gitflow-shFlags || (echo "Run 'git submodule init && git submodule update' first." ; exit 1 )
+	@test -f gitflow-shFlags-202 || (echo "Run 'git submodule init && git submodule update' first." ; exit 1 )
 	install -d -m 0755 $(prefix)/bin
 	install -m 0755 $(EXEC_FILES) $(prefix)/bin
 	install -m 0644 $(SCRIPT_FILES) $(prefix)/bin

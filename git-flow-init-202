@@ -37,7 +37,7 @@
 #
 
 usage() {
-	echo "usage: git flow init [-fd]"
+	echo "usage: git flow-202 init [-fd]"
 }
 
 parse_args() {
@@ -49,7 +49,7 @@ parse_args() {
 # Default entry when no SUBACTION is given
 cmd_default() {
 	DEFINE_boolean force false 'force setting of gitflow branches, even if already configured' f
-	DEFINE_boolean defaults false 'use default branch naming conventions' d
+	DEFINE_boolean defaults true 'use default branch naming conventions (true by default)' d
 	parse_args "$@"
 	
 	if ! git rev-parse --git-dir >/dev/null 2>&1; then
@@ -61,8 +61,8 @@ cmd_default() {
 
 	# running git flow init on an already initialized repo is fine
 	if gitflow_is_initialized && ! flag force; then
-		warn "Already initialized for gitflow."
-		warn "To force reinitialization, use: git flow init -f"
+		warn "Already initialized for gitflow-202."
+		warn "To force reinitialization, use: git flow-202 init -f"
 		exit 0
 	fi
 
@@ -90,7 +90,7 @@ cmd_default() {
 		if [ "$branch_count" -eq 0 ]; then
 			echo "No branches exist yet. Base branches must be created now."
 			should_check_existence=NO
-			default_suggestion=$(git config --get gitflow.branch.master || echo master)
+			default_suggestion=$(echo master)
 		else
 			echo
 			echo "Which branch should be used for bringing forth production releases?"
@@ -98,8 +98,8 @@ cmd_default() {
 
 			should_check_existence=YES
 			default_suggestion=
-			for guess in $(git config --get gitflow.branch.master) \
-			             'production' 'main' 'master'; do
+			for guess in $(echo master) \
+			             'master'; do
 				if git_local_branch_exists "$guess"; then
 					default_suggestion="$guess"
 					break
@@ -107,7 +107,7 @@ cmd_default() {
 			done
 		fi
 		
-		printf "Branch name for production releases: [$default_suggestion] "
+		printf "Branch name for preproduction releases: [$default_suggestion] "
 		if noflag defaults; then
 			read answer
 		else
@@ -131,6 +131,8 @@ cmd_default() {
 		git_do config gitflow.branch.master "$master_branch"
 	fi
 
+
+
 	# add a develop branch if no such branch exists yet
 	local develop_branch
 	if gitflow_has_develop_configured && ! flag force; then
@@ -143,7 +145,7 @@ cmd_default() {
 		branch_count=$(git_local_branches | grep -v "^${master_branch}\$" | wc -l)
 		if [ "$branch_count" -eq 0 ]; then
 			should_check_existence=NO
-			default_suggestion=$(git config --get gitflow.branch.develop || echo develop)
+			default_suggestion=$(echo develop)
 		else
 			echo
 			echo "Which branch should be used for integration of the \"next release\"?"
@@ -151,8 +153,8 @@ cmd_default() {
 
 			should_check_existence=YES
 			default_suggestion=
-			for guess in $(git config --get gitflow.branch.develop) \
-			             'develop' 'int' 'integration' 'master'; do
+			for guess in $(echo develop) \
+			             'develop'; do
 				if git_local_branch_exists "$guess" && [ "$guess" != "$master_branch" ]; then
 					default_suggestion="$guess"
 					break
@@ -161,7 +163,7 @@ cmd_default() {
 			
 			if [ -z $default_suggestion ]; then
 				should_check_existence=NO
-				default_suggestion=$(git config --get gitflow.branch.develop || echo develop)
+				default_suggestion=$(echo develop)
 			fi
 			
 		fi
@@ -186,6 +188,63 @@ cmd_default() {
 
 		# store the name of the develop branch
 		git_do config gitflow.branch.develop "$develop_branch"
+	fi
+
+	# add a production branch if no such branch exists yet
+	local production_branch
+	if gitflow_has_production_configured && ! flag force; then
+		production_branch=$(echo production)
+	else
+		# Again, the same two cases as with the master selection are
+		# considered (fresh repo or repo that contains branches)
+		local default_suggestion
+		local should_check_existence
+		branch_count=$(git_local_branches | grep -v "^${master_branch}\$" | wc -l)
+		if [ "$branch_count" -eq 0 ]; then
+			should_check_existence=NO
+			default_suggestion=$(echo production)
+		else
+			echo
+			echo "Which branch should be used for production branch?"
+			git_local_branches | grep -v "^${master_branch}\$" | sed 's/^.*$/   - &/g'
+
+			should_check_existence=YES
+			default_suggestion=
+			for guess in $(git config --get gitflow.branch.develop) \
+			             'production'; do
+				if git_local_branch_exists "$guess" && [ "$guess" != "$master_branch" ]; then
+					default_suggestion="$guess"
+					break
+				fi
+			done
+			
+			if [ -z $default_suggestion ]; then
+				should_check_existence=NO
+				default_suggestion=$(git config --get gitflow.branch.develop || echo develop)
+			fi
+			
+		fi
+
+		printf "Branch name for production environnement: [$default_suggestion] "
+		if noflag defaults; then
+			read answer
+		else
+			printf "\n"
+		fi
+		production_branch=${answer:-$default_suggestion}
+
+		if [ "$master_branch" = "$production_branch"] || ["$develop_branch" = "$production_branch" ]; then
+			die "(Preproduction and production) and (Production and develop) branches should differ."
+		fi
+
+		# check existence in case of an already existing repo
+		if [ "$should_check_existence" = "YES" ]; then
+			git_local_branch_exists "$production_branch" || \
+				die "Local branch '$production_branch' does not exist."
+		fi
+
+		# store the name of the develop branch
+		git_do config gitflow.branch.production "$production_branch"
 	fi
 
 	# Creation of HEAD
@@ -220,6 +279,21 @@ cmd_default() {
 		created_gitflow_branch=1
 	fi
 
+	# Creation of production
+	# -------------------
+	# The production branch possibly does not exist yet.  This is the case when,
+	# in a git init'ed repo with one or more commits, master was picked as the
+	# default production branch and develop was "created".  We should create
+	# the develop branch now in that case (we base it on master, of course)
+	if ! git_local_branch_exists "$production_branch"; then
+		if git_remote_branch_exists "origin/$production_branch"; then
+			git_do branch "$production_branch" "origin/$production_branch" >/dev/null 2>&1
+		else
+			git_do branch --no-track "$production_branch" "$master_branch"
+		fi
+		created_gitflow_branch=1
+	fi
+
 	# assert the gitflow repo has been correctly initialized
 	gitflow_is_initialized
 
@@ -230,6 +304,7 @@ cmd_default() {
 
 	# finally, ask the user for naming conventions (branch and tag prefixes)
 	if flag force || \
+	   ! git config --get gitflow.prefix.pm >/dev/null 2>&1 || 
 	   ! git config --get gitflow.prefix.feature >/dev/null 2>&1 || 
 	   ! git config --get gitflow.prefix.release >/dev/null 2>&1 || 
 	   ! git config --get gitflow.prefix.hotfix >/dev/null 2>&1 || 
@@ -240,6 +315,19 @@ cmd_default() {
 	fi
 
 	local prefix
+
+	# # PM branches
+	# if ! git config --get gitflow.prefix.pm >/dev/null 2>&1 || flag force; then
+	# 	default_suggestion=$(git config --get gitflow.prefix.pm || echo pm/)
+	# 	printf "PM branches? [$default_suggestion] "
+	# 	if noflag defaults; then
+	# 		read answer
+	# 	else
+	# 		printf "\n"
+	# 	fi
+	# 	[ "$answer" = "-" ] && prefix= || prefix=${answer:-$default_suggestion}
+	# 	git_do config gitflow.prefix.pm "$prefix"
+	# fi
 
 	# Feature branches
 	if ! git config --get gitflow.prefix.feature >/dev/null 2>&1 || flag force; then

@@ -17,18 +17,18 @@ if [ -z "$REPO_NAME" ] ; then
 fi
 
 if [ -z "$REPO_HOME" ] ; then
-	REPO_HOME="http://github.com/nvie/gitflow.git"
+	REPO_HOME="http://github.com/thoma202/gitflow.git"
 fi
 
-EXEC_FILES="git-flow"
-SCRIPT_FILES="git-flow-init git-flow-feature git-flow-hotfix git-flow-release git-flow-support git-flow-version gitflow-common gitflow-shFlags"
-SUBMODULE_FILE="gitflow-shFlags"
+EXEC_FILES="git-flow-202"
+SCRIPT_FILES="git-flow-init-202 git-flow-feature-202 git-flow-hotfix-202 git-flow-release-202 git-flow-support-202 git-flow-version-202 gitflow-common-202 gitflow-shFlags-202"
+SUBMODULE_FILE="gitflow-shFlags-202"
 
-echo "### gitflow no-make installer ###"
+echo "### gitflow202 no-make installer ###"
 
 case "$1" in
 	uninstall)
-		echo "Uninstalling git-flow from $INSTALL_PREFIX"
+		echo "Uninstalling git-flow-202 from $INSTALL_PREFIX"
 		if [ -d "$INSTALL_PREFIX" ] ; then
 			for script_file in $SCRIPT_FILES $EXEC_FILES ; do
 				echo "rm -vf $INSTALL_PREFIX/$script_file"
@@ -41,7 +41,7 @@ case "$1" in
 		exit
 		;;
 	help)
-		echo "Usage: [environment] gitflow-installer.sh [install|uninstall]"
+		echo "Usage: [environment] gitflow-202-installer.sh [install|uninstall]"
 		echo "Environment:"
 		echo "   INSTALL_PREFIX=$INSTALL_PREFIX"
 		echo "   REPO_HOME=$REPO_HOME"
@@ -49,7 +49,7 @@ case "$1" in
 		exit
 		;;
 	*)
-		echo "Installing git-flow to $INSTALL_PREFIX"
+		echo "Installing git-flow-202 to $INSTALL_PREFIX"
 		if [ -d "$REPO_NAME" -a -d "$REPO_NAME/.git" ] ; then
 			echo "Using existing repo: $REPO_NAME"
 		else
